@@ -1,0 +1,60 @@
+# docker-compose.prod.yml
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: roster-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-roster_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ChangeThis123}
+      POSTGRES_DB: ${DB_NAME:-roster_db}
+    volumes:
+      - /volume1/docker/roster-api/data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - roster-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U roster_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: damianomiazzi/roster-api:latest
+    container_name: roster-api
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://${DB_USER:-roster_user}:${DB_PASSWORD:-ChangeThis123}@db:5432/${DB_NAME:-roster_db}
+      JWT_SECRET: ${JWT_SECRET}
+      BCRYPT_ROUNDS: ${BCRYPT_ROUNDS:-12}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - roster-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: roster-tunnel
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    depends_on:
+      - api
+    networks:
+      - roster-network
+
+networks:
+  roster-network:
+    driver: bridge
