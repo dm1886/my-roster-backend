@@ -3,6 +3,7 @@ require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
+const db = require('./config/db'); // ADD THIS
 
 const app = express();
 
@@ -12,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Request Logger
+// Request Logger (MOVE UP BEFORE ROUTES)
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl}`);
   next();
@@ -35,17 +36,18 @@ app.get('/', (req, res) => {
     status: 'running',
     endpoints: {
       health: '/health',
-      auth: '/api/auth/*'
+      auth: '/api/auth/*',
+      icrew: '/api/icrew/*',
+      monthly: '/api/icrew/monthly/*'
     }
   });
 });
 
-// API Routes
+// API Routes (AFTER LOGGER)
 app.use('/api/auth', require('./routes/auth'));
-
-// Protected routes (uncomment when ready)
-// const auth = require('./middleware/auth');
-// app.use('/api/users', auth, require('./routes/users'));
+app.use('/api/icrew', require('./routes/icrew'));
+app.use('/api/icrew/monthly', require('./routes/icrewMonthly'));
+app.use('/api/icrew/weekly', require('./routes/icrewWeekly'));
 
 // 404 Handler
 app.use((req, res) => {
@@ -67,10 +69,18 @@ app.use((err, req, res, next) => {
 
 // Start Server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log('='.repeat(50));
   console.log(`✓ Server running on http://localhost:${PORT}`);
   console.log(`✓ Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`✓ Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
+  
+  // Test database connection
+  try {
+    await db.query('SELECT NOW()');
+    console.log(`✓ Database: Connected`);
+  } catch (error) {
+    console.log(`✗ Database: Not Connected - ${error.message}`);
+  }
+  
   console.log('='.repeat(50));
 });

@@ -12,7 +12,10 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "axios": "^1.12.2",
+    "axios-cookiejar-support": "^6.0.4",
     "bcrypt": "^6.0.0",
+    "cheerio": "^1.1.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
@@ -20,7 +23,10 @@
     "jsonwebtoken": "^9.0.2",
     "nodemailer": "^6.10.1",
     "pg": "^8.16.3",
-    "puppeteer": "^24.23.0"
+    "pino": "^10.0.0",
+    "pino-pretty": "^13.1.2",
+    "puppeteer": "^24.23.0",
+    "tough-cookie": "^6.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
