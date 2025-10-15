@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../config/db');
 const jwt = require('jsonwebtoken');
 const { decrypt } = require('../utils/crypto');
+const logger = require('../utils/logger');
 
 // Middleware to verify JWT
 const auth = (req, res, next) => {
@@ -24,6 +25,8 @@ const auth = (req, res, next) => {
 
 // POST /api/icrew/monthly/download
 router.post('/download', auth, async (req, res) => {
+  const requestLogger = logger.createRequestLogger({ route: 'monthly-download' });
+  
   try {
     const { month, year } = req.body;
 
@@ -54,11 +57,15 @@ router.post('/download', auth, async (req, res) => {
     // Decrypt password
     const icrewPassword = decrypt(icrew_password_encrypted);
 
-    console.log(`📥 Downloading roster for ${year}-${month} (user: ${icrew_username})`);
+    requestLogger.info({ 
+      crewId: icrew_username, 
+      month, 
+      year 
+    }, 'Monthly roster download requested');
 
-    // ✅ CHANGED: Import class and create new instance
+    // Create NEW instance for this request
     const ICrewMonthlyService = require('../services/icrewMonthlyService');
-    const icrewService = new ICrewMonthlyService();
+    const icrewService = new ICrewMonthlyService(icrew_username);
 
     // Login to iCrew
     const client = await icrewService.login(icrew_username, icrewPassword);
@@ -71,13 +78,25 @@ router.post('/download', auth, async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="roster_${year}_${month}.pdf"`);
     res.send(pdfBuffer);
 
-    console.log(`✅ Roster sent to client`);
+    requestLogger.info({ 
+      crewId: icrew_username,
+      size: pdfBuffer.length 
+    }, 'Monthly roster sent successfully');
 
   } catch (error) {
-    console.error('❌ Download roster error:', error);
+    requestLogger.error({ error: error.message }, 'Monthly roster download failed');
     
     if (error.message.includes('Invalid iCrew credentials')) {
       return res.status(401).json({ error: 'Invalid iCrew credentials' });
+    }
+
+    if (error.message.includes('ICREW_NOTICE|||')) {
+      const noticeContent = error.message.replace('ICREW_NOTICE|||', '');
+      return res.status(403).json({ 
+        error: 'Notice from iCrew',
+        notice: noticeContent,
+        message: 'Please log in to the iCrew website to acknowledge this notice.'
+      });
     }
     
     res.status(500).json({ error: 'Failed to download roster: ' + error.message });

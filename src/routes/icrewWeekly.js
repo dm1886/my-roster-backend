@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../config/db');
 const jwt = require('jsonwebtoken');
 const { decrypt } = require('../utils/crypto');
+const logger = require('../utils/logger');
 
 // Middleware to verify JWT
 const auth = (req, res, next) => {
@@ -24,6 +25,8 @@ const auth = (req, res, next) => {
 
 // POST /api/icrew/weekly/download
 router.post('/download', auth, async (req, res) => {
+  const requestLogger = logger.createRequestLogger({ route: 'weekly-download' });
+  
   try {
     const { start_date, end_date } = req.body;
 
@@ -56,15 +59,18 @@ router.post('/download', auth, async (req, res) => {
     // Decrypt password
     const icrewPassword = decrypt(icrew_password_encrypted);
 
-    console.log(`📥 Downloading weekly roster: ${start_date} to ${end_date} (user: ${icrew_username})`);
+    requestLogger.info({ 
+      crewId: icrew_username, 
+      start_date, 
+      end_date 
+    }, 'Weekly roster download requested');
 
-  const ICrewWeeklyService = require('../services/icrewWeeklyService');
+    // Create NEW instance for this request
+    const ICrewWeeklyService = require('../services/icrewWeeklyService');
+    const icrewService = new ICrewWeeklyService(icrew_username);
 
-// ✅ Create NEW instance for this request
-const icrewService = new ICrewWeeklyService();
-
-// Login to iCrew
-const client = await icrewService.login(icrew_username, icrewPassword);
+    // Login to iCrew
+    const client = await icrewService.login(icrew_username, icrewPassword);
 
     // Download roster
     const pdfBuffer = await icrewService.downloadWeeklyRoster(client, start_date, end_date);
@@ -74,13 +80,25 @@ const client = await icrewService.login(icrew_username, icrewPassword);
     res.setHeader('Content-Disposition', `attachment; filename="weekly_roster_${start_date}_${end_date}.pdf"`);
     res.send(pdfBuffer);
 
-    console.log(`✅ Weekly roster sent to client`);
+    requestLogger.info({ 
+      crewId: icrew_username,
+      size: pdfBuffer.length 
+    }, 'Weekly roster sent successfully');
 
   } catch (error) {
-    console.error('❌ Download weekly roster error:', error);
+    requestLogger.error({ error: error.message }, 'Weekly roster download failed');
     
     if (error.message.includes('Invalid iCrew credentials')) {
       return res.status(401).json({ error: 'Invalid iCrew credentials' });
+    }
+
+    if (error.message.includes('ICREW_NOTICE|||')) {
+      const noticeContent = error.message.replace('ICREW_NOTICE|||', '');
+      return res.status(403).json({ 
+        error: 'Notice from iCrew',
+        notice: noticeContent,
+        message: 'Please log in to the iCrew website to acknowledge this notice.'
+      });
     }
     
     res.status(500).json({ error: 'Failed to download roster: ' + error.message });
