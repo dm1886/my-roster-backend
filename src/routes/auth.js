@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const db = require('../config/db');
 const { sendPasswordResetEmail } = require('../services/email');
 const crypto = require('crypto');
+const logger = require('../utils/logger'); // 🆕 ADD THIS
 const router = express.Router();
 const rounds = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
 
@@ -13,17 +14,45 @@ function signToken(user) {
     { 
       sub: user.id, 
       email: user.email, 
-      staffNumber: user.staff_number 
+      staffNumber: user.staff_number,
+      airlineCode: user.airline_code
     },
     process.env.JWT_SECRET,
     { expiresIn: '7d' }
   );
 }
 
-// POST /api/auth/register
-router.post('/register', async (req, res) => {
+// 🆕 NEW ROUTE: Get Available Airlines (Currently just Air Macau)
+router.get('/airlines', async (req, res) => {
   try {
-    const { staff_number, email, password, first_name, last_name, rank } = req.body;
+    const { rows } = await db.query(
+      `SELECT code, name, country, is_active 
+       FROM airlines 
+       WHERE is_active = true
+       ORDER BY name ASC`
+    );
+
+    res.json({ airlines: rows });
+    
+  } catch (error) {
+    logger.error({ error: error.message }, 'Get airlines error');
+    res.status(500).json({ error: 'Failed to fetch airlines' });
+  }
+});
+
+// 🔧 UPDATED: Registration with Airline Support
+router.post('/register', async (req, res) => {
+  const requestLogger = logger.createRequestLogger({ route: 'register' });
+  
+  try {
+    const { 
+      staff_number, 
+      email, 
+      password, 
+      first_name, 
+      last_name, 
+      rank 
+    } = req.body;
     
     // Validate required fields
     if (!email || !password || !first_name || !last_name || !staff_number) {
@@ -31,6 +60,18 @@ router.post('/register', async (req, res) => {
         error: 'Missing required fields: staff_number, email, password, first_name, last_name' 
       });
     }
+
+    // 🆕 Get Air Macau airline ID (only active airline)
+    const airlineResult = await db.query(
+      'SELECT id, code FROM airlines WHERE code = $1 AND is_active = true',
+      ['NX']
+    );
+
+    if (airlineResult.rows.length === 0) {
+      return res.status(500).json({ error: 'Air Macau airline not found in system' });
+    }
+
+    const airline = airlineResult.rows[0];
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -62,14 +103,15 @@ router.post('/register', async (req, res) => {
     const userCount = await db.query('SELECT COUNT(*) as count FROM users');
     const isFirstUser = parseInt(userCount.rows[0].count) === 0;
 
-    // Insert new user
+    // 🆕 Insert new user WITH airline
     const { rows } = await db.query(
       `INSERT INTO users (
-        staff_number, email, password_hash, first_name, last_name, rank, is_current_user
+        staff_number, email, password_hash, first_name, last_name, rank, 
+        airline_id, airline_code, is_current_user
       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING id, staff_number, email, first_name, last_name, rank, 
-                 is_current_user, registered_at, last_login_at`,
+                 airline_code, is_current_user, registered_at, last_login_at`,
       [
         staff_number, 
         email.toLowerCase(), 
@@ -77,6 +119,8 @@ router.post('/register', async (req, res) => {
         first_name, 
         last_name, 
         rank || null,
+        airline.id,
+        airline.code,
         isFirstUser
       ]
     );
@@ -84,47 +128,78 @@ router.post('/register', async (req, res) => {
     const user = rows[0];
     const token = signToken(user);
 
-    console.log(`✅ User registered: ${user.email} (${user.staff_number})`);
+    requestLogger.info({ 
+      email: user.email, 
+      staffNumber: user.staff_number,
+      airline: user.airline_code 
+    }, 'User registered successfully');
 
     res.status(201).json({ user, token });
     
   } catch (error) {
-    console.error('❌ Registration error:', error);
+    requestLogger.error({ error: error.message }, 'Registration error');
     res.status(500).json({ error: 'Internal server error during registration' });
   }
 });
 
-// POST /api/auth/login
+// 🔧 UPDATED: Login with DEBUG logging
 router.post('/login', async (req, res) => {
+  const requestLogger = logger.createRequestLogger({ route: 'login' });
+  
   try {
     const { email, password } = req.body;
     
+    // 🔍 DEBUG LOGGING
+    requestLogger.info({
+      email,
+      emailLength: email?.length,
+      passwordLength: password?.length,
+      emailLowercase: email?.toLowerCase()
+    }, '🔑 LOGIN ATTEMPT');
+    
     // Validate input
     if (!email || !password) {
+      requestLogger.warn('Missing email or password');
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
     // Find user by email
     const { rows } = await db.query(
       `SELECT id, email, password_hash, staff_number, first_name, last_name, rank,
-              is_current_user, registered_at, last_login_at 
+              airline_code, is_current_user, registered_at, last_login_at 
        FROM users 
        WHERE email = $1`,
       [email.toLowerCase()]
     );
 
+    requestLogger.info({ usersFound: rows.length }, 'Database query result');
+
     if (rows.length === 0) {
+      requestLogger.warn({ email: email.toLowerCase() }, 'No user found');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
     const user = rows[0];
+    
+    requestLogger.info({
+      userEmail: user.email,
+      staffNumber: user.staff_number,
+      userName: `${user.first_name} ${user.last_name}`,
+      hashLength: user.password_hash?.length,
+      hashPrefix: user.password_hash?.substring(0, 10)
+    }, 'User found in database');
 
     // Verify password
     const passwordMatch = await bcrypt.compare(password, user.password_hash);
     
+    requestLogger.info({ passwordMatch }, '🔐 Bcrypt comparison result');
+    
     if (!passwordMatch) {
+      requestLogger.warn({ email: user.email }, '❌ PASSWORD MISMATCH');
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+
+    requestLogger.info('✅ Password verified successfully');
 
     // Update last login time
     await db.query(
@@ -138,12 +213,15 @@ router.post('/login', async (req, res) => {
     // Remove password hash from response
     delete user.password_hash;
 
-    console.log(`✅ User logged in: ${user.email}`);
+    requestLogger.info({ 
+      email: user.email, 
+      airline: user.airline_code 
+    }, 'User logged in successfully');
 
     res.json({ user, token });
     
   } catch (error) {
-    console.error('❌ Login error:', error);
+    requestLogger.error({ error: error.message, stack: error.stack }, 'Login error');
     res.status(500).json({ error: 'Internal server error during login' });
   }
 });
@@ -162,7 +240,7 @@ router.get('/verify', async (req, res) => {
     
     const { rows } = await db.query(
       `SELECT id, email, staff_number, first_name, last_name, rank,
-              is_current_user, registered_at, last_login_at
+              airline_code, is_current_user, registered_at, last_login_at
        FROM users 
        WHERE id = $1::uuid`,
       [decoded.sub]
@@ -181,13 +259,15 @@ router.get('/verify', async (req, res) => {
     if (error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Token expired' });
     }
-    console.error('❌ Token verification error:', error);
+    logger.error({ error: error.message }, 'Token verification error');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // DELETE /api/auth/delete - Delete user account
 router.delete('/delete', async (req, res) => {
+  const requestLogger = logger.createRequestLogger({ route: 'delete-account' });
+  
   try {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -207,7 +287,10 @@ router.delete('/delete', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    console.log(`✅ User deleted: ${result.rows[0].email} (${result.rows[0].staff_number})`);
+    requestLogger.info({ 
+      email: result.rows[0].email,
+      staffNumber: result.rows[0].staff_number 
+    }, 'User deleted');
 
     res.json({ 
       message: 'Account deleted successfully',
@@ -218,7 +301,7 @@ router.delete('/delete', async (req, res) => {
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
-    console.error('❌ Delete account error:', error);
+    requestLogger.error({ error: error.message }, 'Delete account error');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
@@ -249,13 +332,15 @@ router.post('/check-email', async (req, res) => {
     }
     
   } catch (error) {
-    console.error('❌ Check email error:', error);
+    logger.error({ error: error.message }, 'Check email error');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // PUT /api/auth/profile - Update user profile
 router.put('/profile', async (req, res) => {
+  const requestLogger = logger.createRequestLogger({ route: 'update-profile' });
+  
   try {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
@@ -302,7 +387,7 @@ router.put('/profile', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 6 characters' });
     }
 
-    updateQuery += ` WHERE id = $${paramCount + 1}::uuid RETURNING id, email, staff_number, first_name, last_name, rank, is_current_user, registered_at, last_login_at`;
+    updateQuery += ` WHERE id = $${paramCount + 1}::uuid RETURNING id, email, staff_number, first_name, last_name, rank, airline_code, is_current_user, registered_at, last_login_at`;
     queryParams.push(decoded.sub);
 
     const { rows } = await db.query(updateQuery, queryParams);
@@ -313,7 +398,10 @@ router.put('/profile', async (req, res) => {
 
     const updatedUser = rows[0];
 
-    console.log(`✅ Profile updated: ${updatedUser.email} (${updatedUser.staff_number})`);
+    requestLogger.info({ 
+      email: updatedUser.email,
+      staffNumber: updatedUser.staff_number 
+    }, 'Profile updated');
 
     res.json({ 
       user: updatedUser,
@@ -324,15 +412,17 @@ router.put('/profile', async (req, res) => {
     if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
       return res.status(401).json({ error: 'Invalid or expired token' });
     }
-    console.error('❌ Profile update error:', error);
+    requestLogger.error({ error: error.message }, 'Profile update error');
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// ==================== 🆕 PASSWORD RESET ROUTES ====================
+// ==================== PASSWORD RESET ROUTES ====================
 
 // Request Password Reset
 router.post('/forgot-password', async (req, res) => {
+  const requestLogger = logger.createRequestLogger({ route: 'forgot-password' });
+  
   try {
     const { email } = req.body;
 
@@ -348,7 +438,7 @@ router.post('/forgot-password', async (req, res) => {
 
     // Always return success (don't reveal if email exists)
     if (result.rows.length === 0) {
-      console.log(`⚠️ Password reset requested for non-existent email: ${email}`);
+      requestLogger.warn({ email }, 'Password reset requested for non-existent email');
       return res.json({ message: 'If that email exists, a reset link has been sent' });
     }
 
@@ -367,22 +457,24 @@ router.post('/forgot-password', async (req, res) => {
     // Send email
     try {
       await sendPasswordResetEmail(user.email, resetToken);
-      console.log(`✅ Password reset email sent to: ${user.email}`);
+      requestLogger.info({ email: user.email }, 'Password reset email sent');
     } catch (emailError) {
-      console.error('❌ Failed to send email:', emailError);
+      requestLogger.error({ error: emailError.message }, 'Failed to send password reset email');
       return res.status(500).json({ error: 'Failed to send reset email' });
     }
 
     res.json({ message: 'Password reset link sent to email' });
 
   } catch (error) {
-    console.error('Forgot password error:', error);
+    requestLogger.error({ error: error.message }, 'Forgot password error');
     res.status(500).json({ error: 'Server error' });
   }
 });
 
 // Reset Password with Token
 router.post('/reset-password', async (req, res) => {
+  const requestLogger = logger.createRequestLogger({ route: 'reset-password' });
+  
   try {
     const { token, password } = req.body;
 
@@ -415,12 +507,12 @@ router.post('/reset-password', async (req, res) => {
       [hashedPassword, user.id]
     );
 
-    console.log(`✅ Password reset successful for user: ${user.email}`);
+    requestLogger.info({ email: user.email }, 'Password reset successful');
 
     res.json({ message: 'Password reset successful' });
 
   } catch (error) {
-    console.error('Reset password error:', error);
+    requestLogger.error({ error: error.message }, 'Reset password error');
     res.status(500).json({ error: 'Server error' });
   }
 });

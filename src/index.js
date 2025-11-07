@@ -59,7 +59,8 @@ app.get('/', (req, res) => {
       auth: '/api/auth/*',
       icrew: '/api/icrew/*',
       monthly: '/api/icrew/monthly/*',
-      weekly: '/api/icrew/weekly/*'
+      weekly: '/api/icrew/weekly/*',
+      parser: '/api/parser/*'  // 🆕 NEW
     }
   });
 });
@@ -69,6 +70,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/icrew', require('./routes/icrew'));
 app.use('/api/icrew/monthly', require('./routes/icrewMonthly'));
 app.use('/api/icrew/weekly', require('./routes/icrewWeekly'));
+app.use('/api/parser', require('./routes/parser'));  // 🆕 NEW: Parser routes
 
 // 404 Handler
 app.use((req, res) => {
