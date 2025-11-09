@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyRoster Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 1200px;
+            overflow: hidden;
+        }
+
+        .login-container {
+            max-width: 400px;
+            padding: 40px;
+        }
+
+        .admin-container {
+            display: none;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            margin-top: 10px;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+        }
+
+        .btn-success {
+            background: #28a745;
+        }
+
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #c33;
+        }
+
+        .success {
+            background: #efe;
+            color: #3c3;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border-left: 4px solid #3c3;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #e1e8ed;
+            margin-bottom: 30px;
+        }
+
+        .tab {
+            padding: 15px 30px;
+            cursor: pointer;
+            color: #666;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab:hover {
+            color: #667eea;
+        }
+
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .stat-card h3 {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stat-card .value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .stat-card .label {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #333;
+            border-bottom: 2px solid #e1e8ed;
+        }
+
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-resolved {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-ignored {
+            background: #d6d8db;
+            color: #383d41;
+        }
+
+        .search-box {
+            margin-bottom: 20px;
+        }
+
+        .search-box input {
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            color: #333;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close-btn:hover {
+            color: #333;
+        }
+
+        .detail-row {
+            display: flex;
+            padding: 12px 0;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            width: 150px;
+            color: #666;
+        }
+
+        .detail-value {
+            flex: 1;
+            color: #333;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            margin: 10px 0;
+        }
+
+        .logout-btn {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid white;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: white;
+            color: #667eea;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .pagination button {
+            padding: 8px 16px;
+            background: white;
+            border: 2px solid #e1e8ed;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            border-color: #667eea;
+            color: #667eea;
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state svg {
+            width: 100px;
+            height: 100px;
+            margin-bottom: 20px;
+            opacity: 0.3;
+        }
+    </style>
+</head>
+<body>
+    <!-- Login View -->
+    <div class="container login-container" id="loginView">
+        <div class="header">
+            <h1>🛫 MyRoster Admin</h1>
+            <p>Backend Management Panel</p>
+        </div>
+        <div class="content">
+            <div id="loginError" class="error" style="display: none;"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" required placeholder="admin@example.com">
+                </div>
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required placeholder="••••••••">
+                </div>
+                <button type="submit" class="btn">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin View -->
+    <div class="container admin-container" id="adminView">
+        <div class="header" style="position: relative;">
+            <h1>🛫 MyRoster Admin Panel</h1>
+            <p id="userInfo"></p>
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        </div>
+        <div class="content">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('dashboard')">📊 Dashboard</div>
+                <div class="tab" onclick="switchTab('users')">👥 Users</div>
+                <div class="tab" onclick="switchTab('unknown')">❓ Unknown Rosters</div>
+            </div>
+
+            <!-- Dashboard Tab -->
+            <div class="tab-content active" id="dashboard">
+                <h2 style="margin-bottom: 20px;">Statistics Overview</h2>
+                <div class="stats-grid" id="statsGrid">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading statistics...
+                    </div>
+                </div>
+                <div id="topPatterns"></div>
+            </div>
+
+            <!-- Users Tab -->
+            <div class="tab-content" id="users">
+                <h2 style="margin-bottom: 20px;">Registered Users</h2>
+                <div class="search-box">
+                    <input type="text" id="userSearch" placeholder="Search by email, name, or staff number..." onkeyup="searchUsers()">
+                </div>
+                <div id="usersTable">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading users...
+                    </div>
+                </div>
+                <div class="pagination" id="usersPagination"></div>
+            </div>
+
+            <!-- Unknown Rosters Tab -->
+            <div class="tab-content" id="unknown">
+                <h2 style="margin-bottom: 20px;">Unknown Roster Codes</h2>
+                <div class="filters">
+                    <div class="filter-group">
+                        <label>Status</label>
+                        <select id="statusFilter" onchange="loadUnknownRosters()">
+                            <option value="pending">Pending</option>
+                            <option value="resolved">Resolved</option>
+                            <option value="ignored">Ignored</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Sort By</label>
+                        <select id="sortFilter" onchange="loadUnknownRosters()">
+                            <option value="last_reported_at">Last Reported</option>
+                            <option value="reported_at">First Reported</option>
+                            <option value="report_count">Report Count</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <label>Search</label>
+                        <input type="text" id="unknownSearch" placeholder="Search in raw text..." onkeyup="searchUnknown()">
+                    </div>
+                </div>
+                <div id="unknownTable">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading unknown rosters...
+                    </div>
+                </div>
+                <div class="pagination" id="unknownPagination"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Unknown Roster Detail Modal -->
+    <div class="modal" id="detailModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Unknown Roster Details</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modalContent"></div>
+        </div>
+    </div>
+
+    <script>
+        let token = localStorage.getItem('adminToken');
+        let currentUser = null;
+        let usersOffset = 0;
+        let unknownOffset = 0;
+        const LIMIT = 20;
+
+        // Check if already logged in
+        if (token) {
+            showAdminView();
+        }
+
+        // Login Form
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    token = data.token;
+                    currentUser = data.user;
+                    localStorage.setItem('adminToken', token);
+                    showAdminView();
+                } else {
+                    showError(data.error || 'Login failed');
+                }
+            } catch (error) {
+                showError('Network error. Please try again.');
+            }
+        });
+
+        function showError(message) {
+            const errorDiv = document.getElementById('loginError');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+
+        function showAdminView() {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('adminView').style.display = 'block';
+            document.getElementById('userInfo').textContent = currentUser ? `Logged in as ${currentUser.email}` : '';
+            loadDashboard();
+        }
+
+        function logout() {
+            localStorage.removeItem('adminToken');
+            token = null;
+            currentUser = null;
+            document.getElementById('loginView').style.display = 'block';
+            document.getElementById('adminView').style.display = 'none';
+            document.getElementById('email').value = '';
+            document.getElementById('password').value = '';
+        }
+
+        function switchTab(tabName) {
+            // Update tab buttons
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(tabName).classList.add('active');
+
+            // Load data for the tab
+            if (tabName === 'dashboard') loadDashboard();
+            if (tabName === 'users') loadUsers();
+            if (tabName === 'unknown') loadUnknownRosters();
+        }
+
+        async function loadDashboard() {
+            try {
+                const response = await fetch('/api/admin/stats', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to load stats');
+
+                const data = await response.json();
+
+                // Render stats
+                const statsGrid = document.getElementById('statsGrid');
+                statsGrid.innerHTML = `
+                    <div class="stat-card">
+                        <h3>Total Users</h3>
+                        <div class="value">${data.users.total}</div>
+                        <div class="label">Registered pilots</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>New Users (7 days)</h3>
+                        <div class="value">${data.users.recent_7_days}</div>
+                        <div class="label">Recent registrations</div>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Unknown Rosters</h3>
+                        <div class="value">${data.unknown_rosters.recent_7_days}</div>
+                        <div class="label">Reported in last 7 days</div>
+                    </div>
+                `;
+
+                // Status breakdown
+                const statusCards = data.unknown_rosters.by_status.map(s => `
+                    <div class="stat-card">
+                        <h3>${s.status.toUpperCase()}</h3>
+                        <div class="value">${s.count}</div>
+                        <div class="label">${s.total_reports} total reports</div>
+                    </div>
+                `).join('');
+                statsGrid.innerHTML += statusCards;
+
+                // Top patterns
+                if (data.unknown_rosters.top_patterns.length > 0) {
+                    const patternsHtml = `
+                        <h3 style="margin-top: 30px; margin-bottom: 15px;">Top Reported Patterns</h3>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Pattern</th>
+                                    <th>Occurrences</th>
+                                    <th>Total Reports</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${data.unknown_rosters.top_patterns.map(p => `
+                                    <tr>
+                                        <td><code>${escapeHtml(p.pattern)}</code></td>
+                                        <td>${p.occurrences}</td>
+                                        <td>${p.total_reports}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                    document.getElementById('topPatterns').innerHTML = patternsHtml;
+                }
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+            }
+        }
+
+        async function loadUsers(offset = 0) {
+            usersOffset = offset;
+            const search = document.getElementById('userSearch').value;
+
+            try {
+                const params = new URLSearchParams({ limit: LIMIT, offset, search });
+                const response = await fetch(`/api/admin/users?${params}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to load users');
+
+                const data = await response.json();
+
+                if (data.users.length === 0) {
+                    document.getElementById('usersTable').innerHTML = `
+                        <div class="empty-state">
+                            <p>No users found</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const tableHtml = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Staff #</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Rank</th>
+                                <th>Airline</th>
+                                <th>Registered</th>
+                                <th>Last Login</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.users.map(u => `
+                                <tr>
+                                    <td>${u.staff_number || '-'}</td>
+                                    <td>${u.first_name} ${u.last_name}</td>
+                                    <td>${u.email}</td>
+                                    <td>${u.rank || '-'}</td>
+                                    <td>${u.airline_code || '-'}</td>
+                                    <td>${formatDate(u.registered_at)}</td>
+                                    <td>${u.last_login_at ? formatDate(u.last_login_at) : 'Never'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                document.getElementById('usersTable').innerHTML = tableHtml;
+
+                // Pagination
+                renderPagination('usersPagination', offset, data.total, loadUsers);
+
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        async function loadUnknownRosters(offset = 0) {
+            unknownOffset = offset;
+            const status = document.getElementById('statusFilter').value;
+            const sort = document.getElementById('sortFilter').value;
+            const search = document.getElementById('unknownSearch').value;
+
+            try {
+                const params = new URLSearchParams({ 
+                    status, 
+                    sort, 
+                    order: 'DESC',
+                    limit: LIMIT, 
+                    offset, 
+                    search 
+                });
+                const response = await fetch(`/api/admin/unknown-rosters?${params}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to load unknown rosters');
+
+                const data = await response.json();
+
+                if (data.unknown_rosters.length === 0) {
+                    document.getElementById('unknownTable').innerHTML = `
+                        <div class="empty-state">
+                            <p>No unknown rosters found</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const tableHtml = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>Raw Text</th>
+                                <th>User</th>
+                                <th>Date</th>
+                                <th>Reports</th>
+                                <th>First/Last Reported</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.unknown_rosters.map(r => `
+                                <tr>
+                                    <td><span class="badge badge-${r.status}">${r.status}</span></td>
+                                    <td><code style="font-size: 12px;">${escapeHtml(r.raw_text.substring(0, 50))}...</code></td>
+                                    <td>${r.email ? r.email.split('@')[0] : 'Unknown'}</td>
+                                    <td>${r.iso_date || '-'}</td>
+                                    <td>${r.report_count}</td>
+                                    <td style="font-size: 11px;">
+                                        ${formatDate(r.reported_at)}<br>
+                                        ${formatDate(r.last_reported_at)}
+                                    </td>
+                                    <td>
+                                        <button onclick="viewUnknownDetail('${r.id}')" style="padding: 6px 12px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                            View
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+
+                document.getElementById('unknownTable').innerHTML = tableHtml;
+
+                // Pagination
+                renderPagination('unknownPagination', offset, data.total, loadUnknownRosters);
+
+            } catch (error) {
+                console.error('Error loading unknown rosters:', error);
+            }
+        }
+
+        async function viewUnknownDetail(id) {
+            try {
+                const response = await fetch(`/api/admin/unknown-rosters/${id}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Failed to load details');
+
+                const data = await response.json();
+                const r = data.unknown_roster;
+
+                const modalHtml = `
+                    <div class="detail-row">
+                        <div class="detail-label">Status:</div>
+                        <div class="detail-value"><span class="badge badge-${r.status}">${r.status}</span></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Raw Text:</div>
+                        <div class="detail-value"><div class="code-block">${escapeHtml(r.raw_text)}</div></div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">User:</div>
+                        <div class="detail-value">${r.email} (${r.first_name} ${r.last_name})</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Staff Number:</div>
+                        <div class="detail-value">${r.staff_number || '-'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Date:</div>
+                        <div class="detail-value">${r.iso_date || '-'} (${r.weekday || '-'}, Day ${r.day_number || '-'})</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Detected:</div>
+                        <div class="detail-value">Kind: ${r.detected_kind || '-'}, Type: ${r.detected_type || '-'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Rule ID:</div>
+                        <div class="detail-value">${r.rule_id || '-'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Device:</div>
+                        <div class="detail-value">${r.device_model || '-'} (iOS ${r.ios_version || '-'})</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">App Version:</div>
+                        <div class="detail-value">${r.app_version || '-'}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Report Count:</div>
+                        <div class="detail-value">${r.report_count}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">First Reported:</div>
+                        <div class="detail-value">${formatDate(r.reported_at)}</div>
+                    </div>
+                    <div class="detail-row">
+                        <div class="detail-label">Last Reported:</div>
+                        <div class="detail-value">${formatDate(r.last_reported_at)}</div>
+                    </div>
+                    ${r.resolved_at ? `
+                        <div class="detail-row">
+                            <div class="detail-label">Resolved:</div>
+                            <div class="detail-value">${formatDate(r.resolved_at)} by ${r.resolved_by}</div>
+                        </div>
+                        <div class="detail-row">
+                            <div class="detail-label">Notes:</div>
+                            <div class="detail-value">${r.resolution_notes || '-'}</div>
+                        </div>
+                    ` : ''}
+                    <div style="margin-top: 20px; display: flex; gap: 10px;">
+                        ${r.status === 'pending' ? `
+                            <button onclick="updateStatus('${r.id}', 'resolved')" class="btn btn-success">Mark Resolved</button>
+                            <button onclick="updateStatus('${r.id}', 'ignored')" class="btn btn-secondary">Ignore</button>
+                        ` : ''}
+                        <button onclick="deleteUnknown('${r.id}')" class="btn btn-danger">Delete</button>
+                    </div>
+                `;
+
+                document.getElementById('modalContent').innerHTML = modalHtml;
+                document.getElementById('detailModal').classList.add('active');
+
+            } catch (error) {
+                console.error('Error loading detail:', error);
+            }
+        }
+
+        async function updateStatus(id, status) {
+            const notes = prompt(`Resolution notes for ${status}:`);
+            if (notes === null) return;
+
+            try {
+                const response = await fetch(`/api/admin/unknown-rosters/${id}`, {
+                    method: 'PATCH',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status, resolution_notes: notes })
+                });
+
+                if (response.ok) {
+                    alert('Status updated successfully!');
+                    closeModal();
+                    loadUnknownRosters(unknownOffset);
+                } else {
+                    alert('Failed to update status');
+                }
+            } catch (error) {
+                console.error('Error updating status:', error);
+                alert('Network error');
+            }
+        }
+
+        async function deleteUnknown(id) {
+            if (!confirm('Are you sure you want to delete this unknown roster?')) return;
+
+            try {
+                const response = await fetch(`/api/admin/unknown-rosters/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    alert('Deleted successfully!');
+                    closeModal();
+                    loadUnknownRosters(unknownOffset);
+                } else {
+                    alert('Failed to delete');
+                }
+            } catch (error) {
+                console.error('Error deleting:', error);
+                alert('Network error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.remove('active');
+        }
+
+        function renderPagination(elementId, offset, total, loadFunction) {
+            const totalPages = Math.ceil(total / LIMIT);
+            const currentPage = Math.floor(offset / LIMIT) + 1;
+
+            const html = `
+                <button ${offset === 0 ? 'disabled' : ''} onclick="${loadFunction.name}(${offset - LIMIT})">← Previous</button>
+                <span>Page ${currentPage} of ${totalPages} (${total} total)</span>
+                <button ${offset + LIMIT >= total ? 'disabled' : ''} onclick="${loadFunction.name}(${offset + LIMIT})">Next →</button>
+            `;
+
+            document.getElementById(elementId).innerHTML = html;
+        }
+
+        let searchTimeout;
+        function searchUsers() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => loadUsers(0), 500);
+        }
+
+        function searchUnknown() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => loadUnknownRosters(0), 500);
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleString('en-GB', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>

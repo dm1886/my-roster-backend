@@ -3,16 +3,22 @@ require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
+const path = require('path');
 const db = require('./config/db');
 const logger = require('./utils/logger');
 
 const app = express();
 
 // Security & Parsing Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Allow inline scripts for admin panel
+}));
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' })); // 🆕 Increased limit for roster uploads
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+
+// Serve static files (admin panel)
+app.use('/admin', express.static(path.join(__dirname, 'public')));
 
 // HTTP Request Logger with Pino
 app.use((req, res, next) => {
@@ -57,20 +63,25 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/health',
       auth: '/api/auth/*',
+      roster: '/api/roster/*',  // 🆕 NEW: Roster sync endpoints
       icrew: '/api/icrew/*',
       monthly: '/api/icrew/monthly/*',
       weekly: '/api/icrew/weekly/*',
-      parser: '/api/parser/*'  // 🆕 NEW
+      parser: '/api/parser/*',
+      admin: '/admin (Admin Panel)',
+      adminApi: '/api/admin/*'
     }
   });
 });
 
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/roster', require('./routes/roster'));  // 🆕 NEW: Roster sync routes
 app.use('/api/icrew', require('./routes/icrew'));
 app.use('/api/icrew/monthly', require('./routes/icrewMonthly'));
 app.use('/api/icrew/weekly', require('./routes/icrewWeekly'));
-app.use('/api/parser', require('./routes/parser'));  // 🆕 NEW: Parser routes
+app.use('/api/parser', require('./routes/parser'));
+app.use('/api/admin', require('./routes/admin'));
 
 // 404 Handler
 app.use((req, res) => {

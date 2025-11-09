@@ -1,5 +1,4 @@
-# docker-compose.dev.yml
-version: "3.9"
+version: '3.8'
 
 services:
   db:
@@ -7,9 +6,9 @@ services:
     container_name: amu-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: amu_db
+      POSTGRES_USER: roster_user
+      POSTGRES_PASSWORD: roster_password
+      POSTGRES_DB: roster_db
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -22,30 +21,26 @@ services:
       dockerfile: Dockerfile
     container_name: my-roster-api
     restart: unless-stopped
-    environment:
-      NODE_ENV: development
-      PORT: 3000
-      DATABASE_URL: postgres://user:password@db:5432/amu_db
-      JWT_SECRET: change_this_now
-      BCRYPT_ROUNDS: "12"
     depends_on:
       - db
+    environment:
+      NODE_ENV: development
+      DATABASE_URL: postgresql://roster_user:roster_password@db:5432/roster_db
+      JWT_SECRET: change_this_now_12345abcdef
+      BCRYPT_ROUNDS: "12"
+      ENCRYPTION_KEY: 7f27a5b30ff12b58738f14f09aa1af526158179899c3feb56f928c7db1d66202
+      EMAIL_HOST: smtp.gmail.com
+      EMAIL_PORT: "587"
+      EMAIL_USER: damianomiazzi@gmail.com
+      EMAIL_PASSWORD: dgheuaricrfuvkxv
+      EMAIL_FROM: "MyRoster <noreply@myroster.com>"
+      FRONTEND_URL: http://localhost:8080
+      LOG_LEVEL: debug
     ports:
       - "3000:3000"
     volumes:
       - ./src:/app/src
-
-  pgadmin:
-    image: dpage/pgadmin4:8
-    container_name: pgadmin
-    restart: unless-stopped
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@local
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    depends_on:
-      - db
+      - ./init.sql:/app/init.sql
 
 volumes:
   pgdata:
