@@ -250,7 +250,9 @@
                         <div class="period-header">
                             <div>
                                 <div class="period-title">📅 ${p.period_start} → ${p.period_end}</div>
-                                <div class="period-meta">Crew ID: <strong>${p.crew_id}</strong> | Versions: <strong>${p.version_count}</strong> | Days: <strong>${p.total_days}</strong> | Last Updated: ${formatDate(p.last_updated_at)}</div>
+                                <div class="period-meta">Crew ID: <strong>${p.crew_id}</strong> | Versions: <strong>${p.version_count}</strong> | Days: <strong>${p.total_days}</strong> | Last Updated: ${formatDate(p.last_updated_at)}
+                                    <button class="btn-danger" style="padding:4px 12px;font-size:11px;margin-left:10px;width:auto;display:inline-block" onclick="deletePeriod(event,'${p.id}','${p.crew_id}','${p.period_start}')">🗑️ Delete</button>
+                                </div>
                             </div>
                         </div>
                         <div class="period-arrow" id="arrow-${p.id}">▶</div>
@@ -273,30 +275,34 @@
             }
         }
         
-        async function loadDays(periodId){
-            const container=document.getElementById(`days-${periodId}`);
-            container.innerHTML='<div class="loading"><div class="spinner"></div>Loading days...</div>';
-            try{
-                const res=await fetch(`/api/roster/days?period_id=${periodId}`,{headers:{Authorization:`Bearer ${token}`}});
-                const data=await res.json();
-                if(!data.days.length){container.innerHTML='<div style="padding:20px;color:#999">No days found</div>';return;}
-                container.innerHTML=data.days.map(d=>`
-                    <div class="roster-day-item" onclick="toggleDay(event,'${d.id}')">
-                        <div class="day-header">
-                            <div>
-                                <span class="day-date">${d.iso_date}</span> <strong>${d.weekday}</strong> (Day ${d.day_number})
-                            </div>
-                            <span class="day-arrow" id="day-arrow-${d.id}">▼</span>
-                        </div>
-                        <div class="day-info">Raw: <code>${escapeHtml(d.raw_text||'No duty')}</code> ${d.has_changes?'<span style="color:#dc3545;font-weight:700">⚠ HAS CHANGES</span>':''}</div>
-                        <div id="duties-${d.id}" class="duties-container open"></div>
+// In loadDays(), add a safety check
+async function loadDays(periodId){
+    const container=document.getElementById(`days-${periodId}`);
+    container.innerHTML='<div class="loading"><div class="spinner"></div>Loading days...</div>';
+    try{
+        const res=await fetch(`/api/roster/days?period_id=${periodId}`,{headers:{Authorization:`Bearer ${token}`}});
+        const data=await res.json();
+        if(!data.days.length){container.innerHTML='<div style="padding:20px;color:#999">No days found</div>';return;}
+        
+        // ✅ Filter to ensure only active days are rendered
+        const activeDays = data.days.filter(d => d.is_active_for_date);
+        
+        container.innerHTML=activeDays.map(d=>`
+            <div class="roster-day-item" onclick="toggleDay(event,'${d.id}')">
+                <div class="day-header">
+                    <div>
+                        <span class="day-date">${d.iso_date}</span> <strong>${d.weekday}</strong> (Day ${d.day_number})
                     </div>
-                `).join('');
-                container.dataset.loaded='true';
-                // Auto-load duties for all days
-                data.days.forEach(d=>loadDuties(d.id));
-            }catch(e){container.innerHTML='<div style="color:red;padding:20px">Error loading days</div>';}
-        }
+                    <span class="day-arrow" id="day-arrow-${d.id}">▼</span>
+                </div>
+                <div class="day-info">Raw: <code>${escapeHtml(d.raw_text||'No duty')}</code> ${d.has_changes?'<span style="color:#dc3545;font-weight:700">⚠ HAS CHANGES</span>':''}</div>
+                <div id="duties-${d.id}" class="duties-container open"></div>
+            </div>
+        `).join('');
+        container.dataset.loaded='true';
+        activeDays.forEach(d=>loadDuties(d.id));
+    }catch(e){container.innerHTML='<div style="color:red;padding:20px">Error loading days</div>';}
+}
         
         function toggleDay(event,dayId){
             event.stopPropagation();
@@ -374,6 +380,22 @@
                 else if(/null/.test(m))cls='json-null';
                 return '<span class="'+cls+'">'+m+'</span>';
             });
+        }
+        
+        async function deletePeriod(event,periodId,crewId,periodStart){
+            event.stopPropagation();
+            if(!confirm(`Delete period for ${crewId} starting ${periodStart}?\n\nThis will permanently delete all days, duties, and sectors for this period.`))return;
+            try{
+                const res=await fetch(`/api/roster/periods/${periodId}`,{
+                    method:'DELETE',
+                    headers:{Authorization:`Bearer ${token}`}
+                });
+                if(!res.ok)throw new Error('Delete failed');
+                alert('Period deleted successfully');
+                loadRosterTree();
+            }catch(e){
+                alert('Error deleting period: '+e.message);
+            }
         }
     </script>
 </body>

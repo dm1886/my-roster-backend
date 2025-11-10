@@ -76,7 +76,7 @@ app.get('/', (req, res) => {
 
 // API Routes
 app.use('/api/auth', require('./routes/auth'));
-app.use('/api/roster', require('./routes/roster'));  // 🆕 NEW: Roster sync routes
+app.use('/api/roster', require('./routes/roster'));  
 app.use('/api/icrew', require('./routes/icrew'));
 app.use('/api/icrew/monthly', require('./routes/icrewMonthly'));
 app.use('/api/icrew/weekly', require('./routes/icrewWeekly'));

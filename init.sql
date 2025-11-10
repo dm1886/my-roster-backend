@@ -257,7 +257,14 @@ ON CONFLICT (code) DO UPDATE SET
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
-    NEW.updated_at = NOW();
+    IF EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = TG_TABLE_NAME
+          AND column_name = 'updated_at'
+    ) THEN
+        NEW.updated_at = NOW();
+    END IF;
     RETURN NEW;
 END;
 $$ language 'plpgsql';
